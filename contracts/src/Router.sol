@@ -85,6 +85,8 @@ contract Router is IERC721Receiver {
     }
 
     function create(address token, address numeraire) external accruePoints returns (bytes32) {
+        if(token == address(0) || numeraire == address(0) || token == numeraire) revert InvalidParams();
+        
         bytes32 poolId = keccak256(abi.encodePacked(token, numeraire));
         if (pools[poolId].token != address(0)) revert PoolAlreadyExists();
 

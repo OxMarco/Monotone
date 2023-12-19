@@ -1,14 +1,14 @@
 export const tokens = [
   {
-    name: "USD Coin",
-    address: "0x2791bca1f2de4661ed88a30c99a7a9449aa84174",
+    name: 'Not USD Coin',
+    address: '0xB1282B067a4D355aa4Ad6D1C7E94a788A9420eC3',
     decimals: 6,
-    symbol: "USDC",
+    symbol: 'NUSD',
   },
   {
-    name: "ChainLink Token",
-    address: "0x514910771af9ca656af840dff83e8264ecf986ca",
+    name: 'ChainLink Token',
+    address: '0x1dE9993Be1Fe26712b2C2ade4a3bA7E044591E90',
     decimals: 18,
-    symbol: "LINK",
-  }
-]
+    symbol: 'LINK',
+  },
+];

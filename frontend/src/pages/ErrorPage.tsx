@@ -5,6 +5,6 @@ const ErrorPage = () => {
       <p>Page not found</p>
     </div>
   );
-}
+};
 
 export default ErrorPage;
