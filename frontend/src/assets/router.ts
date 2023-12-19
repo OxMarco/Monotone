@@ -1,5 +1,5 @@
-const routerAddress = "0x12975173B87F7595EE45dFFb2Ab812ECE596Bf84";
-const routerAbi = [
+export const routerAddress = "0x12975173B87F7595EE45dFFb2Ab812ECE596Bf84";
+export const routerAbi = [
     {
       "inputs": [
         {

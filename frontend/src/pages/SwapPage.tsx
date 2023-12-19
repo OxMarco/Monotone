@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Flex,
   Select,
@@ -8,24 +9,31 @@ import {
   Tab,
   TabPanel,
   Button,
+  InputGroup,
+  FormLabel,
 } from "@chakra-ui/react";
-import { Icon } from '@chakra-ui/react';
-import { CiInboxOut } from 'react-icons/ci';
 import { useContractWrite, useContractEvent } from 'wagmi';
 import { keccak256, encodePacked } from 'viem';
+import { routerAbi, routerAddress } from "../assets/router";
+import { tokens } from "../assets/tokens";
 import Layout from "./Layout";
-import { useState } from "react";
 
 export default function SwapPage() {
-  const [from, setFrom] = useState<string>()
-  const [to, setTo] = useState<string>()
+  const [token0, setToken0] = useState<string>()
+  const [token1, setToken1] = useState<string>()
   const [amount, setAmount] = useState<bigint>(0n)
   const [pools, setPools] = useState<any[]>([])
-  const { data, isError, isLoading, write: redeem } = useContractWrite({
+  const { write: redeem } = useContractWrite({
     address: routerAddress,
     abi: routerAbi,
     functionName: 'redeem',
   })
+  const { write: create } = useContractWrite({
+    address: routerAddress,
+    abi: routerAbi,
+    functionName: 'create',
+  })
+
   useContractEvent({
     address: routerAddress,
     abi: routerAbi,
@@ -38,7 +46,7 @@ export default function SwapPage() {
   const performSwap = async () => {
     const poolId = keccak256(encodePacked(
       ['address', 'address'],
-      [from as any, to as any],
+      [token0 as any, token1 as any],
     ));
     const minAmountOut = 1n
 
@@ -49,6 +57,21 @@ export default function SwapPage() {
         minAmountOut,
       ]
     })
+
+    setToken0(undefined)
+    setToken1(undefined)
+  }
+
+  const createPool = async () => {
+    create({
+      args: [
+        token0 as any,
+        token1 as any,
+      ]
+    })
+
+    setToken0(undefined)
+    setToken1(undefined)
   }
   
   return (
@@ -127,11 +150,11 @@ export default function SwapPage() {
                         size="lg"
                         bg="gray.700"
                         color="white"
-                        onChange={(e) => setFrom(e.target.value)}
+                        onChange={(e) => setToken0(e.target.value)}
                       >
-                        <option value="option1">Option 1</option>
-                        <option value="option2">Option 2</option>
-                        <option value="option3">Option 3</option>
+                        {tokens.map((token) => (
+                          <option value={token.address}>{token.symbol}</option>
+                        ))}
                       </Select>
                     </Flex>
                     <Text
@@ -190,11 +213,11 @@ export default function SwapPage() {
                         size="lg"
                         bg="gray.700"
                         color="white"
-                        onChange={(e) => setTo(e.target.value)}
+                        onChange={(e) => setToken1(e.target.value)}
                       >
-                        <option value="option1">Option 1</option>
-                        <option value="option2">Option 2</option>
-                        <option value="option3">Option 3</option>
+                        {tokens.map((token) => (
+                          <option value={token.address}>{token.symbol}</option>
+                        ))}
                       </Select>
                     </Flex>
                     <Text
@@ -224,20 +247,37 @@ export default function SwapPage() {
                     <TabPanels>
                       <TabPanel>
                         <Flex direction='column' align='center' justify='center' h="100%" w='full' gap="20px">
-
-                        <Icon as={CiInboxOut} boxSize='20' />
-                        <Text
-                            w="100%"
-                            color="#9b9b9b"
-                            fontWeight="500"
-                            height="16px"
-                            display="block"
-                            lineHeight="16px"
-                            textAlign="center"
-                        >
-                          Create a new pair
-                        </Text>
-                          <Button>Create</Button>
+                          <Text
+                              w="100%"
+                              color="#9b9b9b"
+                              fontWeight="500"
+                              height="16px"
+                              display="block"
+                              lineHeight="16px"
+                              textAlign="center"
+                          >
+                            Create a new pair
+                          </Text>
+                          <InputGroup>
+                            <FormLabel>Token</FormLabel>
+                            <Select placeholder="The main token"
+                            onChange={(e) => setToken0(e.target.value)}>
+                            {tokens.map((token) => (
+                              <option value={token.address}>{token.symbol}</option>
+                            ))}
+                            </Select>
+                          </InputGroup>
+                          <InputGroup>
+                            <FormLabel>Numeraire</FormLabel>
+                            <Select placeholder="The backing token"
+                            onChange={(e) => setToken1(e.target.value)}
+                            >
+                            {tokens.map((token) => (
+                              <option value={token.address}>{token.symbol}</option>
+                            ))}
+                            </Select>
+                          </InputGroup>
+                          <Button onClick={() => createPool()}>Create</Button>
                         </Flex>
                       </TabPanel>
                       <TabPanel>
