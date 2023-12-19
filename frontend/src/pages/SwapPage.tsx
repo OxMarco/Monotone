@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
   Flex,
-  Box,
   Text,
   Tabs,
   TabList,
@@ -10,10 +9,9 @@ import {
   TabPanel,
   Button,
   InputGroup,
-  FormLabel,
-  Input,
+  Input, Alert, AlertIcon,
 } from '@chakra-ui/react';
-import { useContractWrite, useContractEvent, sepolia } from 'wagmi';
+import { useContractWrite, sepolia } from 'wagmi';
 import { keccak256, encodePacked, createPublicClient, http } from 'viem';
 import { routerAbi, routerAddress } from '../assets/router';
 import { tokens } from '../assets/tokens';
@@ -25,6 +23,8 @@ export default function SwapPage() {
   const [token1, setToken1] = useState<string>('');
   const [amount, setAmount] = useState<bigint>(0n);
   const [pools, setPools] = useState<any[]>([]);
+  const [error, setError] = useState<string>('');
+
   const { write: redeem } = useContractWrite({
     address: routerAddress,
     abi: routerAbi,
@@ -35,6 +35,13 @@ export default function SwapPage() {
     abi: routerAbi,
     functionName: 'create',
   });
+
+  const handleError = (errorMessage: string) => {
+    setError(errorMessage);
+    setTimeout(() => {
+      setError('');
+    }, 5000); // 5000 milliseconds (5 seconds)
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -89,12 +96,15 @@ export default function SwapPage() {
 
   const createPool = async () => {
     console.log(token0, token1);
-    create({
-      args: [token0 as any, token1 as any],
-    });
-
-    setToken0('');
-    setToken1('');
+    if(!token0 || !token1) {
+      handleError('Please ensure you select a token pair');
+    } else {
+      create({
+        args: [token0 as any, token1 as any],
+      });
+      setToken0('');
+      setToken1('');
+    }
   };
 
   return (
@@ -270,6 +280,15 @@ export default function SwapPage() {
                         w="full"
                         gap="20px"
                       >
+                        {
+                          error &&
+                            <Alert status='error'>
+                              <AlertIcon />
+                              {error}
+                            </Alert>
+                        }
+
+
                         <Text
                           w="100%"
                           color="#9b9b9b"
@@ -281,23 +300,38 @@ export default function SwapPage() {
                         >
                           Create a new pair
                         </Text>
-                        <InputGroup>
-                          <FormLabel>Token</FormLabel>
-                          <TokenSelect
-                            selectedValue={token0}
-                            tokens={tokens}
-                            setter={selectToken0}
-                          />
-                        </InputGroup>
-                        <InputGroup>
-                          <FormLabel>Numeraire</FormLabel>
-                          <TokenSelect
-                            selectedValue={token1}
-                            tokens={tokens}
-                            setter={selectToken1}
-                          />
-                        </InputGroup>
-                        <Button onClick={() => createPool()}>Create</Button>
+                        <Flex w="full" gap='20px'>
+                          <InputGroup>
+                            <TokenSelect
+                                selectedValue={token0}
+                                tokens={tokens}
+                                setter={selectToken0}
+                                placeholder='Select token'
+                            />
+                          </InputGroup>
+                          <InputGroup>
+                            <TokenSelect
+                                selectedValue={token1}
+                                tokens={tokens}
+                                setter={selectToken1}
+                                placeholder='Select Numeraire'
+                            />
+                          </InputGroup>
+                        </Flex>
+                        <Button
+                            rounded="16px"
+                            h="50px"
+                            color="#fff"
+                            cursor="pointer"
+                            boxSizing="border-box"
+                            bg="#000"
+                            w="100%"
+                            onClick={() => createPool()}
+                        >
+                          <Text fontSize="20px" fontWeight="700px" lineHeight="24px">
+                            Create Pool
+                          </Text>
+                        </Button>
                       </Flex>
                     </TabPanel>
                     <TabPanel>
