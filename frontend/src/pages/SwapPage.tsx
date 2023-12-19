@@ -35,6 +35,12 @@ export default function SwapPage() {
     abi: routerAbi,
     functionName: 'create',
   });
+  const handleError = (errorMessage: string) => {
+    setError(errorMessage);
+    setTimeout(() => {
+      setError('');
+    }, 5000); // 5000 milliseconds (5 seconds)
+  };
 
   const handleError = (errorMessage: string) => {
     setError(errorMessage);
@@ -57,10 +63,9 @@ export default function SwapPage() {
         fromBlock: 4919815n,
         toBlock: 4959815n,
       });
-
       let data: any[] = [];
       logs.map((log: any) => {
-        pools.push({
+        data.push({
           token: log.args['token'],
           numeraire: log.args['numeraire'],
           poolId: log.args['poolId'],
@@ -71,6 +76,7 @@ export default function SwapPage() {
 
     load();
   }, []);
+  console.log(pools)
 
   const selectToken0 = (val: string) => {
     setToken0(val);
@@ -257,8 +263,19 @@ export default function SwapPage() {
                   </Flex>
 
                   <Flex w="100%" align="center" justify="center">
-                    <Button variant="outline" onClick={() => performSwap()}>
-                      Swap
+                    <Button
+                        rounded="16px"
+                        h="50px"
+                        color="#fff"
+                        cursor="pointer"
+                        boxSizing="border-box"
+                        bg="#000"
+                        w="100%"
+                        onClick={() => performSwap()}
+                    >
+                      <Text fontSize="20px" fontWeight="700px" lineHeight="24px">
+                        Swap
+                      </Text>
                     </Button>
                   </Flex>
                 </Flex>
