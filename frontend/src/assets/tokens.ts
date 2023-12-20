@@ -12,3 +12,10 @@ export const tokens = [
     symbol: 'LINK',
   },
 ];
+
+export function findSymbolByAddress(address: string): string {
+  const token = tokens.find(
+    (token) => token.address.toLowerCase() === address.toLowerCase(),
+  );
+  return token ? token.symbol : 'Unknown Token';
+}

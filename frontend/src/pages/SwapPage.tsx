@@ -9,12 +9,20 @@ import {
   TabPanel,
   Button,
   InputGroup,
-  Input, Alert, AlertIcon,
+  Input,
+  Alert,
+  AlertIcon,
+  UnorderedList,
+  ListItem,
+  Stack,
+  Card,
+  CardBody,
+  Divider,
 } from '@chakra-ui/react';
 import { useContractWrite, sepolia } from 'wagmi';
 import { keccak256, encodePacked, createPublicClient, http } from 'viem';
 import { routerAbi, routerAddress } from '../assets/router';
-import { tokens } from '../assets/tokens';
+import { findSymbolByAddress, tokens } from '../assets/tokens';
 import Layout from './Layout';
 import TokenSelect from '../components/TokenSelect';
 
@@ -24,14 +32,18 @@ export default function SwapPage() {
   const [amount, setAmount] = useState<bigint>(0n);
   const [pools, setPools] = useState<any[]>([]);
   const [error, setError] = useState<string>('');
-  const [quote, setQuote] = useState(0)
+  const [quote, setQuote] = useState(0);
 
   const { write: redeem } = useContractWrite({
     address: routerAddress,
     abi: routerAbi,
     functionName: 'redeem',
   });
-  const { write: create } = useContractWrite({
+  const {
+    data,
+    isError,
+    write: create,
+  } = useContractWrite({
     address: routerAddress,
     abi: routerAbi,
     functionName: 'create',
@@ -39,9 +51,8 @@ export default function SwapPage() {
 
   const publicClient = createPublicClient({
     chain: sepolia,
-    transport: http()
-  })
-
+    transport: http(),
+  });
 
   const handleError = (errorMessage: string) => {
     setError(errorMessage);
@@ -50,7 +61,11 @@ export default function SwapPage() {
     }, 5000); // 5000 milliseconds (5 seconds)
   };
 
-
+  useEffect(() => {
+    if (isError) {
+      handleError('Pool already exists');
+    }
+  }, [isError]);
 
   useEffect(() => {
     const load = async () => {
@@ -79,26 +94,26 @@ export default function SwapPage() {
 
     load();
   }, []);
-  console.log(pools)
 
   const selectToken0 = (val: string) => {
     setToken0(val);
   };
 
   useEffect(() => {
-    if(token0 && token1 && amount) {
+    if (token0 && token1 && amount) {
       const poolId = keccak256(
-          encodePacked(['address', 'address'], [token0 as any, token1 as any]),
+        encodePacked(['address', 'address'], [token0 as any, token1 as any]),
       );
-      publicClient.readContract({
-        address: routerAddress,
-        abi: routerAbi,
-        functionName: 'quoteTokenForNumeraire',
-        args: [poolId as any, amount as any]
-      }).then((res) => {
-        setQuote(Number(res))
-      })
-
+      publicClient
+        .readContract({
+          address: routerAddress,
+          abi: routerAbi,
+          functionName: 'quoteTokenForNumeraire',
+          args: [poolId as any, amount as any],
+        })
+        .then((res) => {
+          setQuote(Number(res));
+        });
     }
   }, [token0, amount]);
 
@@ -107,11 +122,11 @@ export default function SwapPage() {
   };
 
   const performSwap = async () => {
-    if(!token0 || !token1) {
+    if (!token0 || !token1) {
       handleError('Please ensure you select a token pair');
     } else {
       const poolId = keccak256(
-          encodePacked(['address', 'address'], [token0 as any, token1 as any]),
+        encodePacked(['address', 'address'], [token0 as any, token1 as any]),
       );
       const minAmountOut = 0n;
 
@@ -125,16 +140,20 @@ export default function SwapPage() {
   };
 
   const createPool = async () => {
-    console.log(token0, token1);
-    if(!token0 || !token1) {
+    if (!token0 || !token1) {
       handleError('Please ensure you select a token pair');
     } else {
-      create({
-        args: [token0 as any, token1 as any],
-      });
-      setToken0('');
-      setToken1('');
+      try {
+        create({
+          args: [token0 as any, token1 as any],
+        });
+      } catch (e) {
+        console.log(e);
+      }
     }
+
+    setToken0('');
+    setToken1('');
   };
 
   return (
@@ -167,13 +186,12 @@ export default function SwapPage() {
 
             <TabPanels h="inherit">
               <TabPanel px="0px">
-                {
-                    error &&
-                    <Alert status='error'>
-                      <AlertIcon />
-                      {error}
-                    </Alert>
-                }
+                {error && (
+                  <Alert status="error">
+                    <AlertIcon />
+                    {error}
+                  </Alert>
+                )}
 
                 <Flex
                   gap="4px"
@@ -256,25 +274,26 @@ export default function SwapPage() {
                     <Text w="100%" color="#9b9b9b">
                       You get
                     </Text>
-                    <Text
+                    <Input
                       fontSize="36px"
                       fontWeight="500"
-                      w="280px"
+                      width="270px"
                       cursor="text"
-                      display="block"
-                      flexBasis="auto"
-                      flexGrow="1"
-                      flexShrink="1"
+                      display="flex"
+                      flexGrow={1}
+                      flexShrink={1}
                       fontStyle="normal"
                       position="relative"
                       textAlign="left"
                       textIndent="0px"
                       textOverflow="ellipsis"
                       textShadow="none"
-                      whiteSpace="collapse"
-                    >
-                      {quote }
-                    </Text>
+                      whiteSpace="nowrap"
+                      variant="ghost"
+                      type="number"
+                      value={quote}
+                      disabled={true}
+                    />
                     <Flex>
                       <TokenSelect
                         selectedValue={token1}
@@ -296,16 +315,20 @@ export default function SwapPage() {
 
                   <Flex w="100%" align="center" justify="center">
                     <Button
-                        rounded="16px"
-                        h="50px"
-                        color="#fff"
-                        cursor="pointer"
-                        boxSizing="border-box"
-                        bg="#000"
-                        w="100%"
-                        onClick={() => performSwap()}
+                      rounded="16px"
+                      h="50px"
+                      color="#fff"
+                      cursor="pointer"
+                      boxSizing="border-box"
+                      bg="#000"
+                      w="100%"
+                      onClick={() => performSwap()}
                     >
-                      <Text fontSize="20px" fontWeight="700px" lineHeight="24px">
+                      <Text
+                        fontSize="20px"
+                        fontWeight="700px"
+                        lineHeight="24px"
+                      >
                         Swap
                       </Text>
                     </Button>
@@ -329,13 +352,12 @@ export default function SwapPage() {
                         w="full"
                         gap="20px"
                       >
-                        {
-                          error &&
-                            <Alert status='error'>
-                              <AlertIcon />
-                              {error}
-                            </Alert>
-                        }
+                        {error && (
+                          <Alert status="error">
+                            <AlertIcon />
+                            {error}
+                          </Alert>
+                        )}
 
                         <Text
                           w="100%"
@@ -348,35 +370,39 @@ export default function SwapPage() {
                         >
                           Create a new pair
                         </Text>
-                        <Flex w="full" gap='20px'>
+                        <Flex w="full" gap="20px">
                           <InputGroup>
                             <TokenSelect
-                                selectedValue={token0}
-                                tokens={tokens}
-                                setter={selectToken0}
-                                placeholder='Select token'
+                              selectedValue={token0}
+                              tokens={tokens}
+                              setter={selectToken0}
+                              placeholder="Select token"
                             />
                           </InputGroup>
                           <InputGroup>
                             <TokenSelect
-                                selectedValue={token1}
-                                tokens={tokens}
-                                setter={selectToken1}
-                                placeholder='Select Numeraire'
+                              selectedValue={token1}
+                              tokens={tokens}
+                              setter={selectToken1}
+                              placeholder="Select Numeraire"
                             />
                           </InputGroup>
                         </Flex>
                         <Button
-                            rounded="16px"
-                            h="50px"
-                            color="#fff"
-                            cursor="pointer"
-                            boxSizing="border-box"
-                            bg="#000"
-                            w="100%"
-                            onClick={() => createPool()}
+                          rounded="16px"
+                          h="50px"
+                          color="#fff"
+                          cursor="pointer"
+                          boxSizing="border-box"
+                          bg="#000"
+                          w="100%"
+                          onClick={() => createPool()}
                         >
-                          <Text fontSize="20px" fontWeight="700px" lineHeight="24px">
+                          <Text
+                            fontSize="20px"
+                            fontWeight="700px"
+                            lineHeight="24px"
+                          >
                             Create Pool
                           </Text>
                         </Button>
@@ -392,8 +418,21 @@ export default function SwapPage() {
                         lineHeight="16px"
                         textAlign="center"
                       >
-                        Your active liquidity pools will appear here.
+                        Active liquidity pools will appear here.
                       </Text>
+                      <br />
+                      <Stack>
+                        {pools.map((pool: any, index: number) => (
+                          <Card key={index}>
+                            <CardBody>
+                              <Text>
+                                {findSymbolByAddress(pool.token)} -{' '}
+                                {findSymbolByAddress(pool.numeraire)}
+                              </Text>
+                            </CardBody>
+                          </Card>
+                        ))}
+                      </Stack>
                     </TabPanel>
                   </TabPanels>
                 </Tabs>
