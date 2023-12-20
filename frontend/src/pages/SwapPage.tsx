@@ -12,15 +12,12 @@ import {
   Input,
   Alert,
   AlertIcon,
-  UnorderedList,
-  ListItem,
   Stack,
   Card,
-  CardBody,
-  Divider,
+  CardBody, CardFooter,
 } from '@chakra-ui/react';
-import { useContractWrite, sepolia } from 'wagmi';
-import { keccak256, encodePacked, createPublicClient, http } from 'viem';
+import {useContractWrite, sepolia, useAccount, erc20ABI, useWalletClient} from 'wagmi';
+import {keccak256, encodePacked, createPublicClient, http, maxUint256} from 'viem';
 import { routerAbi, routerAddress } from '../assets/router';
 import { findSymbolByAddress, tokens } from '../assets/tokens';
 import Layout from './Layout';
@@ -32,13 +29,23 @@ export default function SwapPage() {
   const [amount, setAmount] = useState<bigint>(0n);
   const [pools, setPools] = useState<any[]>([]);
   const [error, setError] = useState<string>('');
-  const [quote, setQuote] = useState(0);
+  const [quote, setQuote] = useState(0n);
+  const [poolAmount, setPoolAmount] = useState(0n);
+
+  const { address, isConnected } = useAccount();
+
 
   const { write: redeem } = useContractWrite({
     address: routerAddress,
     abi: routerAbi,
     functionName: 'redeem',
   });
+  const { write: deposit } = useContractWrite({
+    address: routerAddress,
+    abi: routerAbi,
+    functionName: 'deposit',
+  });
+
   const {
     data,
     isError,
@@ -53,6 +60,8 @@ export default function SwapPage() {
     chain: sepolia,
     transport: http(),
   });
+
+  const { data: walletClient } = useWalletClient();
 
   const handleError = (errorMessage: string) => {
     setError(errorMessage);
@@ -94,6 +103,7 @@ export default function SwapPage() {
 
     load();
   }, []);
+  console.log(pools)
 
   const selectToken0 = (val: string) => {
     setToken0(val);
@@ -112,10 +122,10 @@ export default function SwapPage() {
           args: [poolId as any, amount as any],
         })
         .then((res) => {
-          setQuote(Number(res));
+          setQuote(res)
         });
     }
-  }, [token0, amount]);
+  }, [token0, token1, amount]);
 
   const selectToken1 = (val: string) => {
     setToken1(val);
@@ -138,6 +148,35 @@ export default function SwapPage() {
       setToken1('');
     }
   };
+
+  const performDeposit = async (token, poolId) => {
+    if (!poolAmount) {
+      handleError('Please enter a pool amount');
+    } else {
+      const { request } = await publicClient.simulateContract({
+        chain: sepolia,
+        account: address,
+        address: token,
+        abi : erc20ABI,
+        functionName: 'approve',
+        args: [routerAddress as any, maxUint256],
+      });
+
+      const tx = await walletClient.writeContract(request);
+      const transaction = await publicClient.waitForTransactionReceipt({
+        hash: tx,
+      });
+
+      if (transaction.status === 'success') {
+        deposit({
+          args: [poolId, token, poolAmount],
+        });
+      } else {
+        console.log("Error", transaction)
+      }
+    }
+  };
+
 
   const createPool = async () => {
     if (!token0 || !token1) {
@@ -274,25 +313,28 @@ export default function SwapPage() {
                     <Text w="100%" color="#9b9b9b">
                       You get
                     </Text>
+
                     <Input
-                      fontSize="36px"
-                      fontWeight="500"
-                      width="270px"
-                      cursor="text"
-                      display="flex"
-                      flexGrow={1}
-                      flexShrink={1}
-                      fontStyle="normal"
-                      position="relative"
-                      textAlign="left"
-                      textIndent="0px"
-                      textOverflow="ellipsis"
-                      textShadow="none"
-                      whiteSpace="nowrap"
-                      variant="ghost"
-                      type="number"
-                      value={quote}
-                      disabled={true}
+                        fontSize="36px"
+                        fontWeight="500"
+                        width="270px"
+                        cursor="text"
+                        display="flex"
+                        flexGrow={1}
+                        flexShrink={1}
+                        fontStyle="normal"
+                        position="relative"
+                        textAlign="left"
+                        textIndent="0px"
+                        textOverflow="ellipsis"
+                        textShadow="none"
+                        whiteSpace="nowrap"
+                        variant="ghost"
+                        onChange={(e) => setQuote(BigInt(e.target.value))}
+                        type="number"
+                        placeholder="0"
+                        value={Number(quote)}
+                        disabled={true}
                     />
                     <Flex>
                       <TokenSelect
@@ -430,6 +472,32 @@ export default function SwapPage() {
                                 {findSymbolByAddress(pool.numeraire)}
                               </Text>
                             </CardBody>
+                            <CardFooter>
+                              <Input
+                                  fontSize="36px"
+                                  fontWeight="500"
+                                  width="270px"
+                                  cursor="text"
+                                  display="flex"
+                                  flexGrow={1}
+                                  flexShrink={1}
+                                  fontStyle="normal"
+                                  position="relative"
+                                  textAlign="left"
+                                  textIndent="0px"
+                                  textOverflow="ellipsis"
+                                  textShadow="none"
+                                  whiteSpace="nowrap"
+                                  variant="ghost"
+                                  onChange={(e) => setPoolAmount(BigInt(e.target.value))}
+                                  type="number"
+                                  placeholder="0"
+                              />
+                              <Button
+                                disabled={!poolAmount}
+                                onClick={() => performDeposit(pool.token, pool.poolId)}
+                              >Deposit</Button>
+                            </CardFooter>
                           </Card>
                         ))}
                       </Stack>
