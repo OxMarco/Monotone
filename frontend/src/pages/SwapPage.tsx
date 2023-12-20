@@ -24,6 +24,7 @@ export default function SwapPage() {
   const [amount, setAmount] = useState<bigint>(0n);
   const [pools, setPools] = useState<any[]>([]);
   const [error, setError] = useState<string>('');
+  const [quote, setQuote] = useState(0)
 
   const { write: redeem } = useContractWrite({
     address: routerAddress,
@@ -36,12 +37,20 @@ export default function SwapPage() {
     functionName: 'create',
   });
 
+  const publicClient = createPublicClient({
+    chain: sepolia,
+    transport: http()
+  })
+
+
   const handleError = (errorMessage: string) => {
     setError(errorMessage);
     setTimeout(() => {
       setError('');
     }, 5000); // 5000 milliseconds (5 seconds)
   };
+
+
 
   useEffect(() => {
     const load = async () => {
@@ -76,22 +85,43 @@ export default function SwapPage() {
     setToken0(val);
   };
 
+  useEffect(() => {
+    if(token0 && token1 && amount) {
+      const poolId = keccak256(
+          encodePacked(['address', 'address'], [token0 as any, token1 as any]),
+      );
+      publicClient.readContract({
+        address: routerAddress,
+        abi: routerAbi,
+        functionName: 'quoteTokenForNumeraire',
+        args: [poolId as any, amount as any]
+      }).then((res) => {
+        setQuote(Number(res))
+      })
+
+    }
+  }, [token0, amount]);
+
   const selectToken1 = (val: string) => {
     setToken1(val);
   };
 
   const performSwap = async () => {
-    const poolId = keccak256(
-      encodePacked(['address', 'address'], [token0 as any, token1 as any]),
-    );
-    const minAmountOut = 1n;
+    if(!token0 || !token1) {
+      handleError('Please ensure you select a token pair');
+    } else {
+      const poolId = keccak256(
+          encodePacked(['address', 'address'], [token0 as any, token1 as any]),
+      );
+      const minAmountOut = 0n;
 
-    redeem({
-      args: [poolId, amount, minAmountOut],
-    });
+      redeem({
+        args: [poolId, amount, minAmountOut],
+      });
 
-    setToken0('');
-    setToken1('');
+      setToken0('');
+      setToken1('');
+    }
   };
 
   const createPool = async () => {
@@ -137,6 +167,14 @@ export default function SwapPage() {
 
             <TabPanels h="inherit">
               <TabPanel px="0px">
+                {
+                    error &&
+                    <Alert status='error'>
+                      <AlertIcon />
+                      {error}
+                    </Alert>
+                }
+
                 <Flex
                   gap="4px"
                   direction="column"
@@ -235,7 +273,7 @@ export default function SwapPage() {
                       textShadow="none"
                       whiteSpace="collapse"
                     >
-                      0
+                      {quote }
                     </Text>
                     <Flex>
                       <TokenSelect
@@ -298,7 +336,6 @@ export default function SwapPage() {
                               {error}
                             </Alert>
                         }
-
 
                         <Text
                           w="100%"
