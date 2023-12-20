@@ -35,12 +35,6 @@ export default function SwapPage() {
     abi: routerAbi,
     functionName: 'create',
   });
-  const handleError = (errorMessage: string) => {
-    setError(errorMessage);
-    setTimeout(() => {
-      setError('');
-    }, 5000); // 5000 milliseconds (5 seconds)
-  };
 
   const handleError = (errorMessage: string) => {
     setError(errorMessage);

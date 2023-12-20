@@ -11,7 +11,6 @@ const TokenSelect = ({
   setter: (e: any) => void;
   placeholder?: string
 }) => {
-  console.log(tokens)
   return (
       <Select
           placeholder={placeholder || 'Select Options'}
