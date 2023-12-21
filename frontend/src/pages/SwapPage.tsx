@@ -23,7 +23,6 @@ import {
   useAccount,
   erc20ABI,
   useWalletClient,
-  useContractRead,
 } from 'wagmi';
 import {
   keccak256,

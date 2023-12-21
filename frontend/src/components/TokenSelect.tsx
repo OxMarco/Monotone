@@ -1,4 +1,4 @@
-import { Avatar, Select } from '@chakra-ui/react';
+import { Select } from '@chakra-ui/react';
 
 const TokenSelect = ({
   tokens,
