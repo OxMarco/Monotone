@@ -14,16 +14,31 @@ import {
   AlertIcon,
   Stack,
   Card,
-  CardBody, CardFooter,
+  CardBody,
+  CardFooter,
 } from '@chakra-ui/react';
-import {useContractWrite, sepolia, useAccount, erc20ABI, useWalletClient} from 'wagmi';
-import {keccak256, encodePacked, createPublicClient, http, maxUint256} from 'viem';
+import {
+  useContractWrite,
+  sepolia,
+  useAccount,
+  erc20ABI,
+  useWalletClient,
+  useContractRead,
+} from 'wagmi';
+import {
+  keccak256,
+  encodePacked,
+  createPublicClient,
+  http,
+  maxUint256,
+} from 'viem';
 import { routerAbi, routerAddress } from '../assets/router';
 import { findSymbolByAddress, tokens } from '../assets/tokens';
 import Layout from './Layout';
 import TokenSelect from '../components/TokenSelect';
 
 export default function SwapPage() {
+  const [poolId, setPoolId] = useState<string>('');
   const [token0, setToken0] = useState<string>('');
   const [token1, setToken1] = useState<string>('');
   const [amount, setAmount] = useState<bigint>(0n);
@@ -31,9 +46,11 @@ export default function SwapPage() {
   const [error, setError] = useState<string>('');
   const [quote, setQuote] = useState(0n);
   const [poolAmount, setPoolAmount] = useState(0n);
-
-  const { address, isConnected } = useAccount();
-
+  const { address } = useAccount();
+  const client = createPublicClient({
+    chain: sepolia,
+    transport: http(),
+  });
 
   const { write: redeem } = useContractWrite({
     address: routerAddress,
@@ -46,11 +63,7 @@ export default function SwapPage() {
     functionName: 'deposit',
   });
 
-  const {
-    data,
-    isError,
-    write: create,
-  } = useContractWrite({
+  const { isError, write: create } = useContractWrite({
     address: routerAddress,
     abi: routerAbi,
     functionName: 'create',
@@ -77,10 +90,6 @@ export default function SwapPage() {
 
   useEffect(() => {
     const load = async () => {
-      const client = createPublicClient({
-        chain: sepolia,
-        transport: http(),
-      });
       const logs = await client.getContractEvents({
         address: routerAddress,
         abi: routerAbi,
@@ -102,30 +111,36 @@ export default function SwapPage() {
 
     load();
   }, []);
-  console.log(pools)
+
+  useEffect(() => {
+    const quoter = async () => {
+      if (!poolId || amount == 0n) return;
+      console.log('poolId', poolId);
+      const data = await publicClient.readContract({
+        address: routerAddress,
+        abi: routerAbi,
+        functionName: 'quoteTokenForNumeraire',
+        args: [poolId as any, amount],
+      });
+
+      setQuote(data);
+    };
+
+    quoter();
+  }, [poolId, amount]);
+
+  useEffect(() => {
+    if (token0 && token1) {
+      const poolId = keccak256(
+        encodePacked(['address', 'address'], [token0 as any, token1 as any]),
+      );
+      setPoolId(poolId);
+    }
+  }, [token0, token1]);
 
   const selectToken0 = (val: string) => {
     setToken0(val);
   };
-
-  useEffect(() => {
-    if (token0 && token1 && amount) {
-      const poolId = keccak256(
-        encodePacked(['address', 'address'], [token0 as any, token1 as any]),
-      );
-      const final = Number(amount) * 10^18;
-      publicClient
-        .readContract({
-          address: routerAddress,
-          abi: routerAbi,
-          functionName: 'quoteTokenForNumeraire',
-          args: [poolId as any, BigInt(final) as any],
-        })
-        .then((res) => {
-          setQuote(res)
-        });
-    }
-  }, [token0, token1, amount]);
 
   const selectToken1 = (val: string) => {
     setToken1(val);
@@ -139,7 +154,7 @@ export default function SwapPage() {
         encodePacked(['address', 'address'], [token0 as any, token1 as any]),
       );
       const minAmountOut = 0n;
-      const final = Number(amount) * 10^18
+      const final = (Number(amount) * 10) ^ 18;
       redeem({
         args: [poolId, BigInt(final), minAmountOut],
       });
@@ -149,37 +164,36 @@ export default function SwapPage() {
     }
   };
 
-  const performDeposit = async (token, numeraire, poolId) => {
+  const performDeposit = async () => {
     if (!poolAmount) {
-      handleError('Please enter a pool amount');
+      handleError('Please enter a valid amount');
     } else {
       const { request } = await publicClient.simulateContract({
         chain: sepolia,
         account: address,
-        address: token,
-        abi : erc20ABI,
+        address: token0 as any,
+        abi: erc20ABI,
         functionName: 'approve',
         args: [routerAddress as any, maxUint256],
       });
 
-      const tx = await walletClient.writeContract(request);
+      const tx = await walletClient?.writeContract(request);
       const transaction = await publicClient.waitForTransactionReceipt({
-        hash: tx,
+        hash: tx as any,
       });
 
       if (transaction.status === 'success') {
-        await deposit({
-          args: [poolId, token, poolAmount],
-        });
-       await deposit({
-          args: [poolId, numeraire, poolAmount],
+        deposit({
+          args: [poolId as any, token0 as any, poolAmount],
         });
       } else {
-        console.log("Error", transaction)
+        console.log('Error', transaction);
       }
     }
-  };
 
+    setToken0('');
+    setToken1('');
+  };
 
   const createPool = async () => {
     if (!token0 || !token1) {
@@ -190,7 +204,7 @@ export default function SwapPage() {
           args: [token0 as any, token1 as any],
         });
       } catch (e) {
-        console.log(e);
+        console.error(e);
       }
     }
 
@@ -282,6 +296,7 @@ export default function SwapPage() {
                     <Flex>
                       <TokenSelect
                         selectedValue={token0}
+                        unselectableValue={token1}
                         tokens={tokens}
                         setter={selectToken0}
                       />
@@ -294,7 +309,7 @@ export default function SwapPage() {
                       display="block"
                       lineHeight="16px"
                     >
-                      $0.00
+                      ${(amount * 12n).toString()}
                     </Text>
                   </Flex>
 
@@ -318,30 +333,30 @@ export default function SwapPage() {
                     </Text>
 
                     <Input
-                        fontSize="36px"
-                        fontWeight="500"
-                        width="270px"
-                        cursor="text"
-                        display="flex"
-                        flexGrow={1}
-                        flexShrink={1}
-                        fontStyle="normal"
-                        position="relative"
-                        textAlign="left"
-                        textIndent="0px"
-                        textOverflow="ellipsis"
-                        textShadow="none"
-                        whiteSpace="nowrap"
-                        variant="ghost"
-                        onChange={(e) => setQuote(BigInt(e.target.value))}
-                        type="number"
-                        placeholder="0"
-                        value={Number(quote)}
-                        disabled={true}
+                      fontSize="36px"
+                      fontWeight="500"
+                      width="270px"
+                      cursor="text"
+                      display="flex"
+                      flexGrow={1}
+                      flexShrink={1}
+                      fontStyle="normal"
+                      position="relative"
+                      textAlign="left"
+                      textIndent="0px"
+                      textOverflow="ellipsis"
+                      textShadow="none"
+                      whiteSpace="nowrap"
+                      variant="ghost"
+                      type="number"
+                      placeholder="0"
+                      value={quote.toString()}
+                      disabled={true}
                     />
                     <Flex>
                       <TokenSelect
                         selectedValue={token1}
+                        unselectableValue={token0}
                         tokens={tokens}
                         setter={selectToken1}
                       />
@@ -354,7 +369,7 @@ export default function SwapPage() {
                       display="block"
                       lineHeight="16px"
                     >
-                      $0.00
+                      ${(quote * 1n).toString()}
                     </Text>
                   </Flex>
 
@@ -419,6 +434,7 @@ export default function SwapPage() {
                           <InputGroup>
                             <TokenSelect
                               selectedValue={token0}
+                              unselectableValue={token1}
                               tokens={tokens}
                               setter={selectToken0}
                               placeholder="Select token"
@@ -427,6 +443,7 @@ export default function SwapPage() {
                           <InputGroup>
                             <TokenSelect
                               selectedValue={token1}
+                              unselectableValue={token0}
                               tokens={tokens}
                               setter={selectToken1}
                               placeholder="Select Numeraire"
@@ -477,29 +494,40 @@ export default function SwapPage() {
                             </CardBody>
                             <CardFooter>
                               <Input
-                                  fontSize="36px"
-                                  fontWeight="500"
-                                  width="270px"
-                                  cursor="text"
-                                  display="flex"
-                                  flexGrow={1}
-                                  flexShrink={1}
-                                  fontStyle="normal"
-                                  position="relative"
-                                  textAlign="left"
-                                  textIndent="0px"
-                                  textOverflow="ellipsis"
-                                  textShadow="none"
-                                  whiteSpace="nowrap"
-                                  variant="ghost"
-                                  onChange={(e) => setPoolAmount(BigInt(e.target.value))}
-                                  type="number"
-                                  placeholder="0"
+                                fontSize="36px"
+                                fontWeight="500"
+                                width="270px"
+                                cursor="text"
+                                display="flex"
+                                flexGrow={1}
+                                flexShrink={1}
+                                fontStyle="normal"
+                                position="relative"
+                                textAlign="left"
+                                textIndent="0px"
+                                textOverflow="ellipsis"
+                                textShadow="none"
+                                whiteSpace="nowrap"
+                                variant="ghost"
+                                onChange={(e) =>
+                                  setPoolAmount(BigInt(e.target.value))
+                                }
+                                value={poolAmount.toString()}
+                                type="number"
+                                placeholder="0"
+                              />
+                              <TokenSelect
+                                selectedValue={token0}
+                                unselectableValue=""
+                                tokens={tokens}
+                                setter={selectToken0}
                               />
                               <Button
                                 disabled={!poolAmount}
-                                onClick={() => performDeposit(pool.token, pool.numeraire, pool.poolId)}
-                              >Deposit</Button>
+                                onClick={() => performDeposit()}
+                              >
+                                Deposit
+                              </Button>
                             </CardFooter>
                           </Card>
                         ))}

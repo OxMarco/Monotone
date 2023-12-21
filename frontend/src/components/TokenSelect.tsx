@@ -1,13 +1,15 @@
-import { Select } from '@chakra-ui/react';
+import { Avatar, Select } from '@chakra-ui/react';
 
 const TokenSelect = ({
   tokens,
   selectedValue,
+  unselectableValue,
   setter,
   placeholder,
 }: {
   tokens: any[];
   selectedValue: string;
+  unselectableValue: string;
   setter: (e: any) => void;
   placeholder?: string;
 }) => {
@@ -21,15 +23,13 @@ const TokenSelect = ({
       onChange={(e) => setter(e.target.value)}
       value={selectedValue}
     >
-      {tokens.map((token: any, index: number) => (
-        <option key={index} value={token.address}>
-          {/*<Avatar*/}
-          {/*size={'sm'}*/}
-          {/*src={`https://icons.llamao.fi/icons/chains/rsz_${token.symbol}.jpg`}*/}
-          {/*/>*/}
-          {token.symbol}
-        </option>
-      ))}
+      {tokens
+        .filter((token) => token.address !== unselectableValue)
+        .map((token: any, index: number) => (
+          <option key={index} value={token.address}>
+            {token.symbol}
+          </option>
+        ))}
     </Select>
   );
 };
