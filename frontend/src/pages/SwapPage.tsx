@@ -60,7 +60,6 @@ export default function SwapPage() {
     chain: sepolia,
     transport: http(),
   });
-
   const { data: walletClient } = useWalletClient();
 
   const handleError = (errorMessage: string) => {
@@ -114,12 +113,13 @@ export default function SwapPage() {
       const poolId = keccak256(
         encodePacked(['address', 'address'], [token0 as any, token1 as any]),
       );
+      const final = Number(amount) * 10^18;
       publicClient
         .readContract({
           address: routerAddress,
           abi: routerAbi,
           functionName: 'quoteTokenForNumeraire',
-          args: [poolId as any, amount as any],
+          args: [poolId as any, BigInt(final) as any],
         })
         .then((res) => {
           setQuote(res)
@@ -139,9 +139,9 @@ export default function SwapPage() {
         encodePacked(['address', 'address'], [token0 as any, token1 as any]),
       );
       const minAmountOut = 0n;
-
+      const final = Number(amount) * 10^18
       redeem({
-        args: [poolId, amount, minAmountOut],
+        args: [poolId, BigInt(final), minAmountOut],
       });
 
       setToken0('');
@@ -149,7 +149,7 @@ export default function SwapPage() {
     }
   };
 
-  const performDeposit = async (token, poolId) => {
+  const performDeposit = async (token, numeraire, poolId) => {
     if (!poolAmount) {
       handleError('Please enter a pool amount');
     } else {
@@ -168,8 +168,11 @@ export default function SwapPage() {
       });
 
       if (transaction.status === 'success') {
-        deposit({
+        await deposit({
           args: [poolId, token, poolAmount],
+        });
+       await deposit({
+          args: [poolId, numeraire, poolAmount],
         });
       } else {
         console.log("Error", transaction)
@@ -495,7 +498,7 @@ export default function SwapPage() {
                               />
                               <Button
                                 disabled={!poolAmount}
-                                onClick={() => performDeposit(pool.token, pool.poolId)}
+                                onClick={() => performDeposit(pool.token, pool.numeraire, pool.poolId)}
                               >Deposit</Button>
                             </CardFooter>
                           </Card>
