@@ -160,16 +160,20 @@ export default function SwapPage() {
       );
       const minAmountOut = 0n;
 
-      redeem({
+      await redeem({
         args: [poolId, BigInt(amount), minAmountOut],
       });
 
-      setToken0('');
-      setToken1('');
+
+      await setAmount(0n);
+      await setNAmount(0);
+      await setQuote(0n);
+      await setToken0('');
+      await setToken1('');
     }
   };
 
-  const performDeposit = async () => {
+  const performDeposit = async (pool) => {
     if (!poolAmount) {
       handleError('Please enter a valid amount');
     } else {
@@ -189,7 +193,7 @@ export default function SwapPage() {
 
       if (transaction.status === 'success') {
         deposit({
-          args: [poolId as any, token0 as any, poolAmount],
+          args: [pool.poolId as any, token0 as any, poolAmount],
         });
       } else {
         console.log('Error', transaction);
@@ -198,6 +202,7 @@ export default function SwapPage() {
 
     setToken0('');
     setToken1('');
+    setPoolAmount(0n);
   };
 
   const createPool = async () => {
@@ -296,6 +301,7 @@ export default function SwapPage() {
                       variant="ghost"
                       onChange={(e) => setNAmount(Number(e.target.value))}
                       onBlur={(e) => handleAmountInput(e.target.value)}
+                      value={nAmount}
                       type="number"
                       placeholder="0"
                     />
@@ -499,41 +505,50 @@ export default function SwapPage() {
                               </Text>
                             </CardBody>
                             <CardFooter>
-                              <Input
-                                fontSize="36px"
-                                fontWeight="500"
-                                width="270px"
-                                cursor="text"
-                                display="flex"
-                                flexGrow={1}
-                                flexShrink={1}
-                                fontStyle="normal"
-                                position="relative"
-                                textAlign="left"
-                                textIndent="0px"
-                                textOverflow="ellipsis"
-                                textShadow="none"
-                                whiteSpace="nowrap"
-                                variant="ghost"
-                                onChange={(e) =>
-                                  setPoolAmount(BigInt(e.target.value))
-                                }
-                                value={poolAmount.toString()}
-                                type="number"
-                                placeholder="0"
-                              />
-                              <TokenSelect
-                                selectedValue={token0}
-                                unselectableValue=""
-                                tokens={tokens}
-                                setter={selectToken0}
-                              />
-                              <Button
-                                disabled={!poolAmount}
-                                onClick={() => performDeposit()}
-                              >
-                                Deposit
-                              </Button>
+                              <Flex justify='space-between' gap='10px' w='full'>
+                                <Input
+                                    fontSize="36px"
+                                    fontWeight="500"
+                                    width="270px"
+                                    cursor="text"
+                                    display="flex"
+                                    flexGrow={1}
+                                    flexShrink={1}
+                                    fontStyle="normal"
+                                    position="relative"
+                                    textAlign="left"
+                                    textIndent="0px"
+                                    textOverflow="ellipsis"
+                                    textShadow="none"
+                                    whiteSpace="nowrap"
+                                    variant="ghost"
+                                    onChange={(e) =>
+                                        setPoolAmount(BigInt(e.target.value))
+                                    }
+                                    // value={poolAmount.toString()}
+                                    type="number"
+                                    placeholder="0"
+                                />
+                                <TokenSelect
+                                    selectedValue={token0}
+                                    unselectableValue=""
+                                    tokens={tokens}
+                                    setter={selectToken0}
+                                />
+                                <Button
+                                    disabled={!poolAmount}
+                                    onClick={() => performDeposit(pool)}
+                                    rounded="16px"
+                                    h="50px"
+                                    color="#fff"
+                                    cursor="pointer"
+                                    boxSizing="border-box"
+                                    bg="#000"
+                                    w="100%"
+                                >
+                                  Deposit
+                                </Button>
+                              </Flex>
                             </CardFooter>
                           </Card>
                         ))}
