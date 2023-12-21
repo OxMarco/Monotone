@@ -40,6 +40,7 @@ export default function SwapPage() {
   const [poolId, setPoolId] = useState<string>('');
   const [token0, setToken0] = useState<string>('');
   const [token1, setToken1] = useState<string>('');
+  const [nAmount, setNAmount] = useState<number>(0);
   const [amount, setAmount] = useState<bigint>(0n);
   const [pools, setPools] = useState<any[]>([]);
   const [error, setError] = useState<string>('');
@@ -50,6 +51,11 @@ export default function SwapPage() {
     chain: sepolia,
     transport: http(),
   });
+  const handleAmountInput = (value) => {
+    setNAmount(value)
+    const final = (Number(amount) * 10) ^ 18;
+    setAmount(BigInt(final))
+  }
 
   const { write: redeem } = useContractWrite({
     address: routerAddress,
@@ -153,9 +159,9 @@ export default function SwapPage() {
         encodePacked(['address', 'address'], [token0 as any, token1 as any]),
       );
       const minAmountOut = 0n;
-      const final = (Number(amount) * 10) ^ 18;
+
       redeem({
-        args: [poolId, BigInt(final), minAmountOut],
+        args: [poolId, BigInt(amount), minAmountOut],
       });
 
       setToken0('');
@@ -288,7 +294,8 @@ export default function SwapPage() {
                       textShadow="none"
                       whiteSpace="nowrap"
                       variant="ghost"
-                      onChange={(e) => setAmount(BigInt(e.target.value))}
+                      onChange={(e) => setNAmount(Number(e.target.value))}
+                      onBlur={(e) => handleAmountInput(e.target.value)}
                       type="number"
                       placeholder="0"
                     />
@@ -308,7 +315,7 @@ export default function SwapPage() {
                       display="block"
                       lineHeight="16px"
                     >
-                      ${(amount * 12n).toString()}
+                      ${(nAmount * 12).toString()}
                     </Text>
                   </Flex>
 
