@@ -3,13 +3,23 @@ This repository aims at creating a backing dex, an AMM where the swap function i
 This essentially ensures that **regardless of how many people swap their token, the price is fixed and is based on the ratio between the token circulating supply and the pool numeraire balance.**
 > To make an example, let's imagine the pool contains 1000 DAI as numeraire and the token is TKN, held by Alice (10 TKN), Bob (80 TKN) and Alice (10 TKN). The price of 1 TKN is 10 DAI (1000/100) and it will remain so regardless of how many people swap their TKN for DAI or viceversa.
 
-The dex includes several key features.
+## Use Cases
+This dex is particularly useful when combining **stablecoins** and **synthetic assets** or **rwa**, as it allows the creation for a consistent backing that supports the price of the main token. Arbitrageurs can then use this dex to swap the main token for the numeraire and viceversa, ensuring that the price of the main token is always backed by the numeraire on other dexes.
 
-1. **Liquidity Pools**: It allows for the creation and management of liquidity pools in the router contract acting as a singleton to save gas. These pools are essentially reservoirs of different types of cryptocurrencies that users can contribute to and withdraw from.
+An example are ETF-like tokens where the value of the token is backed by fee-earning assets so that the minimum price properly respects the fees accrued.
 
-2. **Incentive System**: One of the innovative aspects of this contract is its use of a points system to reward users. These points are earned based on the users' interactions with the contract, particularly through the computational resources (or gas) they expend.
+## Architecture
+The dex is made of a single monolithic smart contract, the router, that acts as a singleton and manages the liquidity pools. The router is the only contract that can interact with the pools, while users can only interact with the router. This is done to save gas (approximately 60% compared to pool-based dexes) and to keep a minimal attack surface.
 
-## How to run tests
+## Incentive System
+One of the innovative aspects of this contract is its use of a points system to reward users leveraging Mode's SFS.
+These points are earned based on the users' interactions with the contract, particularly through the computational resources (or gas) they expend.
+
+## How to run it
+The project is deployed on Sepolia and uses mock tokens:
+* Router `0x71b6e127d9DD6060d3C229E783A99a9F656baEb4`
+* LINK `0x1dE9993Be1Fe26712b2C2ade4a3bA7E044591E90`
+* NUSD `0xB1282B067a4D355aa4Ad6D1C7E94a788A9420eC3`
 
 ### Contracts
 Install [foundry](https://book.getfoundry.sh/getting-started/installation) if you don't have it already:
