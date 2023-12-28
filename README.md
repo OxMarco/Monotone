@@ -16,7 +16,14 @@ One of the innovative aspects of this contract is its use of a points system to 
 These points are earned based on the users' interactions with the contract, particularly through the computational resources (or gas) they expend.
 
 ## How to run it
-The project is deployed on Sepolia and uses mock tokens:
+The project is deployed on both Sepolia and Mode testnet and uses mock tokens:
+
+**Mode**
+* Router `0x8430490531cF86Db1580fA9CcBFCECd06BCd7DF9`
+* MLINK `0x7563943E99CCf404CDBeFDD98ddE91DC52b08836`
+* MUSD `0x87F3D0d1Ea8781b01Ae4e2bF99aCe343804122F3`
+
+**Sepolia**
 * Router `0x71b6e127d9DD6060d3C229E783A99a9F656baEb4`
 * LINK `0x1dE9993Be1Fe26712b2C2ade4a3bA7E044591E90`
 * NUSD `0xB1282B067a4D355aa4Ad6D1C7E94a788A9420eC3`
